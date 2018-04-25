@@ -14,7 +14,6 @@ import sys
 
 # numpy and scipy
 import numpy as np
-from scipy.ndimage import filters
 
 # OpenCV
 import cv2
@@ -38,7 +37,7 @@ class Line_finder:
     def __init__(self):
         '''Initialize ros publisher, ros subscriber'''
         # topic where we publish
-        self.image_pub = rospy.Publisher("/output/image_raw/compressed",
+        self.image_pub = rospy.Publisher("~image/compressed",
             CompressedImage, queue_size = 1)
         # self.bridge = CvBridge()
 
@@ -58,17 +57,19 @@ class Line_finder:
         if VERBOSE :
             print 'received image of type: "%s"' % ros_data.format
 
-        if self.line == None:
-        	self.line = Line(img)
+        
 
         #### direct conversion to CV2 ####
         np_arr = np.fromstring(ros_data.data, np.uint8)
-        image_np = cv2.imdecode(np_arr, cv2.CV_LOAD_IMAGE_COLOR)
-        #image_np = cv2.imdecode(np_arr, cv2.IMREAD_COLOR) # OpenCV >= 3.0:
+        # image_np = cv2.imdecode(np_arr, cv2.CV_LOAD_IMAGE_COLOR)
+        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR) # OpenCV >= 3.0:
         
+        if self.line == None:
+            self.line = Line(img)
+
         time1 = rospy.Time.now()
 
-        offset, outImg = line.find_offset(image_np)
+        cte, outImg = self.line.find_offset(img)
         
         time2 = rospy.Time.now()
         dur = time2 - time1
@@ -78,7 +79,7 @@ class Line_finder:
         
         
         # Debug info
-        rospy.loginfo("Cross track error: " + cte + ". Processing time: " + )
+        rospy.loginfo("Cross track error: %s", cte)
 
         #### Create CompressedIamge ####
         msg = CompressedImage()
