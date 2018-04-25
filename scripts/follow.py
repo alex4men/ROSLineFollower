@@ -28,9 +28,12 @@ from sensor_msgs.msg import CompressedImage
 # We do not use cv_bridge it does not support CompressedImage in python
 # from cv_bridge import CvBridge, CvBridgeError
 
+# custom lib
+from imgprocess.Line import Line
+
 VERBOSE=False
 
-class line_finder:
+class Line_finder:
 
     def __init__(self):
         '''Initialize ros publisher, ros subscriber'''
@@ -42,6 +45,9 @@ class line_finder:
         # subscribed Topic
         self.subscriber = rospy.Subscriber("/camera/image/compressed",
             CompressedImage, self.callback,  queue_size = 1)
+
+        self.line = None
+
         if VERBOSE :
             print "subscribed to /camera/image/compressed"
 
@@ -52,6 +58,9 @@ class line_finder:
         if VERBOSE :
             print 'received image of type: "%s"' % ros_data.format
 
+        if self.line == None:
+        	self.line = Line(img)
+
         #### direct conversion to CV2 ####
         np_arr = np.fromstring(ros_data.data, np.uint8)
         image_np = cv2.imdecode(np_arr, cv2.CV_LOAD_IMAGE_COLOR)
@@ -59,18 +68,13 @@ class line_finder:
         
         time1 = rospy.Time.now()
 
-        # convert np image to grayscale
-        grayImg = cv2.cvtColor(image_np, cv2.COLOR_BGR2GRAY)
-        # roi = 
-        # binarize
-        # convolve
-        # find a histogram
-        # find a peak
+        offset, outImg = line.find_offset(image_np)
+        
         time2 = rospy.Time.now()
         dur = time2 - time1
-        if VERBOSE :
-            print '%s detector found: %s points in: %s sec.'%(method,
-                len(featPoints),time2-time1)
+        # if VERBOSE :
+        #     print '%s detector found: %s points in: %s sec.'%(method,
+        #         len(featPoints),time2-time1)
         
         
         # Debug info
@@ -80,7 +84,7 @@ class line_finder:
         msg = CompressedImage()
         msg.header.stamp = rospy.Time.now()
         msg.format = "jpeg"
-        msg.data = np.array(cv2.imencode('.jpg', image_np)[1]).tostring()
+        msg.data = np.array(cv2.imencode('.jpg', outImg)[1]).tostring()
         # Publish new image
         self.image_pub.publish(msg)
         
@@ -88,7 +92,7 @@ class line_finder:
 
 def main(args):
     '''Initializes and cleanup ros node'''
-    lf = line_finder()
+    lf = Line_finder()
     rospy.init_node('line_finder', anonymous=False)
     try:
         rospy.spin()
