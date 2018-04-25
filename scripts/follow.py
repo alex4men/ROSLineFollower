@@ -24,6 +24,7 @@ import rospy
 
 # Ros Messages
 from sensor_msgs.msg import CompressedImage
+from geometry_msgs.msg import Twist
 # We do not use cv_bridge it does not support CompressedImage in python
 # from cv_bridge import CvBridge, CvBridgeError
 
@@ -37,8 +38,10 @@ class Line_finder:
     def __init__(self):
         '''Initialize ros publisher, ros subscriber'''
         # topic where we publish
-        self.image_pub = rospy.Publisher("~image/compressed",
+        self.image_pub = rospy.Publisher("/camera2/image/compressed",
             CompressedImage, queue_size = 1)
+
+        self.twist_pub = rospy.Publisher("/part2_cmr/cmd_vel", Twist, queue_size = 1)
         # self.bridge = CvBridge()
 
         # subscribed Topic
@@ -89,6 +92,10 @@ class Line_finder:
         # Publish new image
         self.image_pub.publish(msg)
         
+        twist = Twist()
+        twist.linear.x = 0.6
+        twist.angular.z = -cte*0.1
+        self.twist_pub.publish(twist)
         #self.subscriber.unregister()
 
 def main(args):
@@ -99,6 +106,10 @@ def main(args):
         rospy.spin()
     except KeyboardInterrupt:
     	# Stop the motors
+        twist = Twist()
+        twist.linear.x = 0
+        twist.angular.z = 0
+        self.twist_pub.publish(twist)
         print "Shutting down ROS Image feature detector module"
 
 if __name__ == '__main__':

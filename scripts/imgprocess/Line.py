@@ -21,6 +21,7 @@ class Line():
         self.window_width = img.shape[1]//5
         self.seeBelowY = img.shape[0] - img.shape[0]//6
         self.img_centerX = img.shape[1]//2
+        self.line_center = img.shape[1]//2
 
 
     def find_offset(self, img):
@@ -39,22 +40,25 @@ class Line():
         binary_inv[binary==0] = 1
 
         nonzero = binary_inv.nonzero()
-        nonzerox = np.array(nonzero[1])
+        if len(nonzero) != 0:
+            nonzerox = np.array(nonzero[1])
+        else:
+            nonzerox = self.window_width
 
         outImg = img.copy()
         cv2.rectangle(outImg, (windowLeftX, self.seeBelowY), (windowRightX, gray.shape[0]), (0,255,0), 2)
 
         avgX = np.median(nonzerox)
 
-        line_center = int(avgX)+windowLeftX
-        cv2.circle(outImg, (line_center, self.seeBelowY), 5, (0,255,0),2)
+        self.line_center = int(avgX)+windowLeftX
+        cv2.circle(outImg, (self.line_center, self.seeBelowY), 5, (0,255,0),2)
         cv2.circle(outImg, (self.img_centerX, self.seeBelowY), 5, (0,0,255),2)
 
-        if abs(self.window_center-line_center) > 10:
-            self.window_center = int(0.5*line_center + 0.5*self.window_center)
+        if abs(self.window_center-self.line_center) > 10:
+            self.window_center = int(0.5*self.line_center + 0.5*self.window_center)
 
 
-        cte = line_center - self.img_centerX
+        cte = self.line_center - self.img_centerX
 
         return cte, outImg
 
