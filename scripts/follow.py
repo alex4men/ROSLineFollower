@@ -37,11 +37,14 @@ class Line_finder:
 
     def __init__(self):
         '''Initialize ros publisher, ros subscriber'''
+        rospy.init_node('line_finder', anonymous=False)
         # topic where we publish
-        self.image_pub = rospy.Publisher("/camera2/image/compressed",
+        self.image_pub = rospy.Publisher("/detected_cte/image/compressed",
+            CompressedImage, queue_size = 1)
+        self.image_roi_pub = rospy.Publisher("/roi/image/compressed",
             CompressedImage, queue_size = 1)
 
-        self.twist_pub = rospy.Publisher("/part2_cmr/cmd_vel", Twist, queue_size = 1)
+        self.twist_pub = rospy.Publisher("/car_cmr/cmd_vel", Twist, queue_size = 1)
         # self.bridge = CvBridge()
 
         # subscribed Topic
@@ -72,7 +75,13 @@ class Line_finder:
 
         time1 = rospy.Time.now()
 
-        cte, outImg = self.line.find_offset(img)
+        try:
+            cte, outImg, roiImg = self.line.find_offset(img)
+        except:
+            cte = 0
+            outImg = img
+            roiImg = img
+
         
         time2 = rospy.Time.now()
         dur = time2 - time1
@@ -91,25 +100,37 @@ class Line_finder:
         msg.data = np.array(cv2.imencode('.jpg', outImg)[1]).tostring()
         # Publish new image
         self.image_pub.publish(msg)
+
+        #### Create CompressedIamge ####
+        msg = CompressedImage()
+        msg.header.stamp = rospy.Time.now()
+        msg.format = "jpeg"
+        msg.data = np.array(cv2.imencode('.jpg', roiImg)[1]).tostring()
+        # Publish new image
+        self.image_roi_pub.publish(msg)
         
         twist = Twist()
-        twist.linear.x = 0.6
-        twist.angular.z = -cte*0.1
+        twist.linear.x = 1.0
+        twist.angular.z = -cte*0.015
         self.twist_pub.publish(twist)
         #self.subscriber.unregister()
+
+    def shutdown(self):
+        rospy.loginfo(rospy.get_caller_id() + " RCTeleop shutdown")
+
 
 def main(args):
     '''Initializes and cleanup ros node'''
     lf = Line_finder()
-    rospy.init_node('line_finder', anonymous=False)
+    # rospy.init_node('line_finder', anonymous=False)
     try:
         rospy.spin()
     except KeyboardInterrupt:
     	# Stop the motors
-        twist = Twist()
-        twist.linear.x = 0
-        twist.angular.z = 0
-        self.twist_pub.publish(twist)
+        # twist = Twist()
+        # twist.linear.x = 0
+        # twist.angular.z = 0
+        # self.twist_pub.publish(twist)
         print "Shutting down ROS Image feature detector module"
 
 if __name__ == '__main__':
